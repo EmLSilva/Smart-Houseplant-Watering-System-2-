@@ -14,7 +14,7 @@
 #include <Adafruit_MQTT/Adafruit_MQTT.h>
 
 const int soilMoisturePin = A2;
-const int pumpPin = D14;
+const int pumpPin = D5;
 //const int publishTime = 30000; 
 
 
@@ -22,8 +22,6 @@ int buttonValue;
 int moistureValue;
 int pumpLastTime;
 int currentTime;
-int activatePump;
-int deactivatePump;
 
 /************ Global State (you don't need to change this!) ***   ***************/ 
 TCPClient TheClient; 
@@ -45,75 +43,92 @@ float subValue,pubValue;
 void MQTT_connect();
 bool MQTT_ping();
 float buttononoff;
-float randomnumber;
 
-SYSTEM_MODE(SEMI_AUTOMATIC);
+
+SYSTEM_MODE(AUTOMATIC);
 
 
 void setup() {
-  WiFi.on();
-   WiFi.connect();
+  //WiFi.on();
+   //WiFi.connect();
    Serial.begin(9600);
    pinMode(soilMoisturePin, INPUT);
    pinMode(pumpPin,OUTPUT);
    Time.zone(-7);
    Particle.syncTime();
-   Wire.begin();
+   //Wire.begin();
    mqtt.subscribe(&buttonFeed);
    
 }
 
 void loop() {
-  //currentTime=millis();
+  MQTT_connect();
+  MQTT_ping();
+  currentTime=millis();
   moistureValue=analogRead(soilMoisturePin); 
-  //if((currentTime-pumpLastTime>=10000)){
-     if(moistureValue>=2500){
+  Serial.printf("moistureValue %i \n",moistureValue);
+  if((currentTime-lastTime) > 30000){
+    if(moistureValue>=3100){
+      Serial.printf("turningPumpOn");
       digitalWrite(pumpPin, HIGH);
-      delay(500);
+      delay(5000);
       digitalWrite(pumpPin, LOW);
     }
-  if(moistureValue<2500){
-       digitalWrite(pumpPin, LOW);
-    }
-     // pumpLastTime=millis();
-   
+    if(mqtt.Update()){
+      soilFeed.publish(moistureValue);
+     Serial.printf("Publishing %i \n",moistureValue); 
+        
+    } 
+    lastTime=millis();  
+  }
+    
       
-Adafruit_MQTT_Subscribe *subscription;
+  Adafruit_MQTT_Subscribe *subscription;
   while ((subscription=mqtt.readSubscription(4000))) {
     if (subscription==&buttonFeed) {
-        buttonValue=atoi((char *)buttonFeed.lastread);
-  Serial.printf("buttonValue%i\n",buttonValue);
+      buttonValue=atoi((char *)buttonFeed.lastread);
+      Serial.printf("buttonValue%i\n",buttonValue); 
     }
   }
-    if (buttonValue==HIGH) {
-      digitalWrite(pumpPin, HIGH);
-      Serial.printf("Manual Water Button ON \n");
-    }
-    else {
-      digitalWrite(pumpPin, LOW);
-      Serial.printf("Manual Water Button OFF \n");
-    }
+  if (buttonValue==HIGH) {
+        digitalWrite(pumpPin, HIGH);
+        Serial.printf("Manual Water Button ON \n"); 
+      }
+      else{
+        digitalWrite(pumpPin, LOW);
+        Serial.printf("Manual Water Button OFF \n"); 
+      }
+}
 
-    // if((millis()-lastTime>30000)){
-    // if(mqtt.Update()){
-    //      SoilFeed.publish(moistureValue);
-    //     Serial.printf("Publishing %i \n",moistureValue); 
-    //     lastTime=millis();
-    //   } 
-  //}
- // Serial.printf("MQTT Connected!\n");
+void MQTT_connect() {
+  int8_t ret;
+ 
+  // Return if already connected.
+  if (mqtt.connected()) { //checks to see if connected to function
+    return;
+  }
+ 
+  Serial.print("Connecting to MQTT... "); 
+ 
+  while ((ret = mqtt.connect()) != 0) { 
+      Serial.printf("Error Code %s\n",mqtt.connectErrorString(ret)); 
+      Serial.printf("Retrying MQTT connection in 5 seconds...\n"); 
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds
+  }
+  Serial.printf("MQTT Connected!\n"); 
 }
 bool MQTT_ping(){
   static unsigned int last;
   bool pingStatus;
 
   if ((millis()-last)>120000) {
-      Serial.printf("Pinging MQTT \n");
+      Serial.printf("Pinging MQTT \n"); 
       pingStatus = mqtt.ping();
-      if(!pingStatus) {
-        Serial.printf("Disconnecting \n");
-        mqtt.disconnect();
-      }
+        if(!pingStatus) {
+          Serial.printf("Disconnecting \n");
+          mqtt.disconnect();
+        }
       last = millis();
   }
   return pingStatus;
