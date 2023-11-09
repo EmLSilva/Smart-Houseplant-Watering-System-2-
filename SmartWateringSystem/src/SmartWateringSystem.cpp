@@ -14,7 +14,7 @@
 #include <Adafruit_MQTT/Adafruit_MQTT.h>
 
 const int soilMoisturePin = A2;
-const int pumpPin = D13;
+const int pumpPin = D14;
 //const int publishTime = 30000; 
 
 
