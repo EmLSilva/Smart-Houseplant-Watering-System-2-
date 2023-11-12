@@ -88,9 +88,7 @@ void loop() {
     if (subscription==&buttonFeed) {
       buttonValue=atoi((char *)buttonFeed.lastread);
       Serial.printf("buttonValue%i\n",buttonValue); 
-    }
-  }
-  if (buttonValue==HIGH) {
+    if (buttonValue==HIGH) {
         digitalWrite(pumpPin, HIGH);
         Serial.printf("Manual Water Button ON \n"); 
       }
@@ -98,6 +96,9 @@ void loop() {
         digitalWrite(pumpPin, LOW);
         Serial.printf("Manual Water Button OFF \n"); 
       }
+    }
+  }
+  
 }
 
 void MQTT_connect() {
